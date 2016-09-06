@@ -14,7 +14,6 @@ require(grid)
 #require(googleVis)
 
 
-
 # Load & filter data ------------------------------------------------------
 
 d <- read_tsv('c:/Users/yizhart/Downloads/Datasets/Pulotu_Database_4_7_2015.txt')
@@ -29,6 +28,7 @@ d %>%
   ) ->
 d
 
+
 # Graph1 : time period overlap --------------------------------------------
 
 d %>% 
@@ -37,6 +37,7 @@ d %>%
     labs(x = 'Years', y = 'Culture') +
     #theme_minimal() + 
     theme(legend.position="none")
+
   
 # Graph2 : cultures on map, based on population size ----------------------
 
@@ -66,9 +67,9 @@ qmap(c(lon = 140, lat = -10), zoom = 3) +
 year_pattern <- '[ ][(][0-9]{4}[A-Z]{0,1}[)][ ]'
 
 d %>% 
-  select(ends_with('Source'), isocode) %>%
+  select(ends_with('Source'), Culture) %>%
   # transpose each column to a row
-  melt(id = ('isocode')) %>% 
+  melt(id = ('Culture')) %>% 
   # split multiple sources in a single line
   mutate(value = strsplit(value, split = '; ')) %>%
   # convert a multi-source line to multiple lines
@@ -85,28 +86,30 @@ d %>%
     after = substr(value, start+length, stop = nchar(value))
   ) %>%
   # everythin before the year is author name, and the match is year in brackets
-  select(isocode, variable, Author = before, year = matched) %>%
+  select(Culture, variable, Author = before, year = matched) %>%
   mutate(year = as.numeric(gsub('[^0-9]', '', year))) %>%
-  # filter(isocode == 'aia' )  %>% # & substring(variable, 1,3) == 'v29'
+  # filter(Culture == 'aia' )  %>% # & substring(variable, 1,3) == 'v29'
   # split multiple authors
   mutate(Author = strsplit(Author, split = ' & ')) %>%
   # convert a multi-Author line to multiple lines
   unnest(Author) %>%
   # filter numbers (some errors occur)
   filter(grepl('[a-zA-Z]', Author)) %>%
-  # break multi-isocode lines to separate lines
-  mutate(isocode = strsplit(isocode, split = '; ')) %>%
-  # convert a multi-Author line to multiple lines
-  unnest(isocode) %>%
+#   # break multi-Culture lines to separate lines
+#   mutate(Culture = strsplit(Culture, split = '; ')) %>%
+#   # convert a multi-Author line to multiple lines
+#   unnest(Culture) %>%
   tbl_df() ->
 source_freq
 
 
-# Top 20 contributors -----------------------------------------------------
+# Top N contributors -----------------------------------------------------
+
+N <- 20
 
 source_freq %>%
   count(Author, sort = TRUE) %>%
-  top_n(20) %>%
+  top_n(N) %>%
   ggplot(aes(x = reorder(Author, desc(n)), y = n)) + 
     ggtitle('Top 20 contributors') +
     geom_bar(stat = 'identity', fill = 'blue', alpha = 0.75) +
@@ -118,11 +121,11 @@ source_freq %>%
 # Heatmap: source X culture -----------------------------------------------
 
 source_freq %>%
-  count(isocode, Author) %>%
-  semi_join({source_freq %>% count(Author, sort = TRUE) %>% top_n(10)}, c('Author' = 'Author')) %>%
+  count(Culture, Author) %>%
+  semi_join({source_freq %>% count(Author, sort = TRUE) %>% top_n(N)}, c('Author' = 'Author')) %>%
   #filter(n > 40) %>%
-  ggplot(aes(x = isocode, y = Author)) + 
-    ggtitle('Heat-map: top 10 contributors vs. Culture isocode') +
+  ggplot(aes(x = Culture, y = Author)) + 
+    ggtitle(paste0('Heat-map: top ', N, ' contributors vs. Culture Culture')) +
     geom_raster(aes(fill = n)) + 
     scale_fill_gradientn(colours=rainbow(4)) + 
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -159,7 +162,7 @@ require(wordcloud)
 data("stop_words")
 
 d %>% 
-  select(isocode, Culture, Culture_Notes) %>%
+  select(Culture, Culture_Notes) %>%
   unnest_tokens(word, Culture_Notes, token = 'words') %>%
   anti_join(stop_words) %>%
   count(word, sort = TRUE) %>%
