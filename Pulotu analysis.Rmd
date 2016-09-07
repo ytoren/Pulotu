@@ -1,0 +1,307 @@
+---
+title: "Meta analysis of anthropological data: the Pulotu database" 
+author: "Yizhar (Izzie) Toren"
+date: "7 September 2016"
+output: html_document
+references:
+- id: journal.pone.0136783
+  title: "Pulotu: Database of Austronesian Supernatural Beliefs and Practices"
+  author:
+  - family: Watts
+    given: Joseph
+  - family: Sheehan
+    given: Oliver
+  - family: Greenhill 
+    given: Simon J. 
+  - family: Gomes-Ng 
+    given: Stephanie 
+  - family: Atkinson 
+    given: Quentin D. 
+  - family: Bulbulia 
+    given: Joseph 
+  - family: Gray 
+    given: Russell D.
+  volume: 10
+  URL: 'http://dx.doi.org/10.1371%2Fjournal.pone.0136783'
+  DOI: 10.1371/journal.pone.0136783
+  journal: PLoS ONE
+  page: 1-17
+  issued:
+    year: 2015
+    month: 9
+- id: ggmap_cite
+  title: 'ggmap: Spatial Visualization with ggplot2'
+  author:
+  - family: Kahle  
+    given: David
+  - family: Wickham
+    given: Hadley
+  journal: The R Journal
+  volume: 5
+  number: 1
+  issued:
+    year: 2013
+  pages: 144--161
+  URL: 'http://journal.r-project.org/archive/2013-1/kahle-wickham.pdf'
+
+---
+
+<!--- and ![Pulotu Logo](https://pulotu.shh.mpg.de/static/img/HeadLarge.jpg {width=40px  height=400px}) --->
+<!--- <center><img src="https://pulotu.shh.mpg.de/static/img/HeadLarge.jpg" alt="Drawing" style="width: 100px;"/></center> --->
+
+# Background
+
+The Puloto database (@journal.pone.0136783) contains many variables on religion, history, society, and the natural environment of 116 Austronesian cultures. As stated on the [website](https://pulotu.shh.mpg.de/about), the database was specifically designed to analyse religious beliefs and practices and is therefore a wonderful candidate for some basic analysis and visualizations, which I'm leaving to a later date (maybe as a ```shiny``` exercise). As the title of this post suggests, my objective is to explore the ability of R to analyse and visualize metadata, focusing on text notes and academic paper citations. 
+
+
+## The database
+
+The dataset used for this analysis is available from the [Pulotu website](https://pulotu.shh.mpg.de/dataset). The data table starts with variables describing the culture (name, notes, ISO / ABVD codes) and then a series pairs of columns with a similar prefix (vXX...) - one column containing the actual data and another column containing a citation of the source for the data. The table looks something like: 
+
+Culture | Culture Notes | isocode | ABVD Code | v1.Traditional Time Focus | v1.Source | v2.Number of islands inhabited by culture | v2.Source | ...
+--------|---------------|---------|-----------|---------------------------|-----------|------------------------------------------|-----------|-----
+Ajie | The indigenous people of ... | aji | 1188 | 1825-1850 | Winslow (1991) pp 9 | 1 | Winslow (1991) pp 7 | ...
+Ami | The Ami lived... | ami | 350 | 1875-1900 | Lebar (1975) pp 117 | 1 | Lebar (1975) pp 116 | ...
+
+A full data dictionary can be found [here](https://pulotu.shh.mpg.de/glossary).
+
+# Analysis
+
+## Working in the tidy-verse
+
+One of my personal goals in writing this post is to analyse the data using the principles of [Tidy Data](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html). I wrote my first piece of R-code a while ago (2005) and have been coding mostly in base R, SQL for data manipulations (via ```sqldf```) and the basic ```plot``` function. Adjusting to the new coding paradigm (```dplyr``` semantics, ```magrittr``` pipes, etc.) and the "graphic grammar" of ```ggplot2``` has been quite a challenge but a real "eye opener" to new ways of thinking about data, analysis and code. For new-comers into this brave new world I highly recommend starting with this [post](http://kbroman.org/hipsteR/) by Karl Broman.
+
+So let's get started be loading all the packages we need and reading the data file:
+
+```{r, echo = TRUE, message=FALSE}
+# Data manipulation packages
+require(dplyr)
+require(readr)
+require(tidyr)
+require(reshape2)
+require(tidytext)
+
+# Graphics packages
+require(ggplot2)
+require(ggmap)
+
+# Load & filter data, focusing only on the "pacific" cultures-------------------
+read_tsv('c:/Users/yizhart/Downloads/Datasets/Pulotu_Database_4_7_2015.txt') %>%
+    filter(substring(Culture, 1, 8) != 'Malagasy') ->
+d
+```
+
+## Data visualizations
+
+Let's start with a simple example: the variable marked as "v1.Traditional\_Time\_Focus" contains a range of years (1XXX - 1XXX) to which observations about a culture are applicable. Since the structure is uniform it's easy to extract the beginning and the end of the period and visualize the data
+
+``` {r, echo = TRUE, out.width = '1024px', dpi=200}
+# adding some columns
+d %>% 
+  mutate(
+    Start = parse_date(paste(substring(v1.Traditional_Time_Focus, first = 1, last = 4), '-01-01', sep = ''), format = '%Y-%m-%d'),
+    End   = parse_date(paste(substring(v1.Traditional_Time_Focus, first = 6), '-01-01', sep = ''), format = '%Y-%m-%d'),
+    n = row_number()
+  ) ->
+d
+
+# Graph1 : time period overlap --------------------------------------------
+d %>% 
+  ggplot() + 
+    geom_segment(aes(x=Start, xend=End, y=Culture, yend=Culture, color = Culture), size=1) + 
+    labs(x = 'Years', y = 'Culture') +
+    theme(legend.position = "none", axis.text.y = element_text(size=4))
+```
+
+Another simple visualization is to take the longitude/latitude included in the files and use the to place some data on a map. As a first step let's try to find the "centre" of the map so we can make the appropriate request from the map service:
+
+```{r, echo = TRUE}
+d %>% summarise(
+  lon_mean = mean(v6.Longitude), 
+  lat_mean = mean(v5.Latitude),
+  lon_med = median(v6.Longitude),
+  lat_med = median(v5.Latitude)
+)
+```
+
+I ended up choosing a coordinate manually (140, -10). The following code is not particularly "tidy" but works with the ```ggmap``` package (@ggmap_cite) to show the relative population of the culture on a Google map:
+
+```{r, echo = FALSE, warning=FALSE}
+qmap(c(lon = 140, lat = -10), zoom = 3) +
+  geom_point(
+    data = d, 
+    aes(x = v6.Longitude, y = v5.Latitude), 
+    color = 'red',
+    show.legend = TRUE,
+    alpha = 0.3, 
+    size = 5 + 30 * as.numeric(d$v10.Population)/ max(as.numeric(d$v10.Population), na.rm = TRUE)
+  ) +
+  geom_text(
+    data = d,
+    aes(x = v6.Longitude, y = v5.Latitude, label = Culture), 
+    check_overlap = FALSE,
+    size = 1 + 5 * as.numeric(d$v10.Population)/ max(as.numeric(d$v10.Population), na.rm = TRUE)
+  )
+
+```
+
+
+## Metadata: Parsing source citations
+
+So far we've looked at some pretty straight forward visualizations. What if we want to analyse not the data itself but the sources of the data? Below is a piece of code that takes the "vXXX.Source" columns and tries to parse them into author and year of publication. I relied on the fact that the citations typically follow a consistent structure:
+
+> Author1 & Author2 & ... (YYYY) pp XX-XX
+
+where YYYY stands for a 4 digit year. 
+
+As you can see I rely heavily on "tidy" concepts and packages (```dplyr, tidyr, tidytext & reshape2```)
+
+```{r, echo = TRUE}
+# Regexp definition of the year pattern
+year_pattern <- '[ ][(][0-9]{4}[A-Z]{0,1}[)][ ]'
+
+d %>% 
+  select(ends_with('Source'), Culture) %>%
+  # transpose each column to a row
+  melt(id = ('Culture')) %>% 
+  # split multiple sources in a single line
+  mutate(value = strsplit(value, split = '; ')) %>%
+  # convert a multi-source line to multiple lines
+  unnest(value) %>% 
+  # Locate year pattern - creates a colun of "regex" objects
+  mutate(regex = gregexpr(pattern = year_pattern, text = value)) %>%
+  # In case there's more than one match (still) build a column of DF's and then split again
+  mutate(regex_values = Map(function(y) {data.frame(start = unlist(y), length = attr(y, "match.length"))}, regex)) %>%
+  select(-regex) %>%
+  unnest(regex_values) %>%
+  mutate(
+    before = substr(value, 1, start-1), 
+    matched = substr(value, start, start+length-1), 
+    after = substr(value, start+length, stop = nchar(value))
+  ) %>%
+  # everythin before the year is author name, and the match itself "year in brackets"
+  select(Culture, variable, Author = before, year = matched) %>%
+  mutate(year = as.numeric(gsub('[^0-9]', '', year))) %>%
+  # split multiple authors
+  mutate(Author = strsplit(Author, split = ' & ')) %>%
+  # convert a multi-Author line to multiple lines
+  unnest(Author) %>%
+  # filter author names that are all numbers (some errors occur)
+  filter(grepl('[a-zA-Z]', Author)) %>%
+  tbl_df() ->
+source_freq
+
+head(source_freq)
+```
+
+My intention was to measure the contribution to single data points in the database, therefore the new table contains a quote per author per culture per data column. As a result, papers that contributed information to multiple cultures or papers that was used (and cited) for multiple variables will appear on multiple rows.
+
+## Visualizing contributions to the DB
+Now that we have the data in a tidy format, let's visualize it!
+
+### Example 1: Who are the top 50 contributors to the database?
+
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+source_freq %>%
+  count(Author, sort = TRUE) %>%
+  top_n(50) %>%
+  ggplot(aes(x = reorder(Author, desc(n)), y = n)) + 
+    ggtitle('Top 20 contributors') +
+    geom_bar(stat = 'identity', fill = 'blue', alpha = 0.75) +
+    xlab('Author') + 
+    ylab('Citations') + 
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### Example 2: For the top 20 contributors, how is the cuntribution distributed between cultures?
+
+As you can see some authors contribute multiple papers to a single culture, while others contribute a single paper for multiple culture (and are therefore counted 20 times)
+
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+source_freq %>%
+  count(Culture, Author) %>%
+  semi_join({source_freq %>% count(Author, sort = TRUE) %>% top_n(20)}, c('Author' = 'Author')) %>%
+  #filter(n > 40) %>%
+  ggplot(aes(x = Culture, y = Author)) + 
+    ggtitle(paste0('Heat-map: top 20 contributors vs. Culture Culture')) +
+    geom_raster(aes(fill = n)) + 
+    scale_fill_gradientn(colours=rainbow(4)) + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 6))
+```
+
+Ignoring the special cases ([Google maps](http://maps.google.com), [DaftLogic](https://www.daftlogic.com/projects-google-maps-distance-calculator.htm) or the very prolific "Source not applicable") we can see that some of the authors (e.g. Belvins) contributed across the board, while others made a concentrated contribution to a few cultures (e.g. Burrows and Forth).
+
+### Example 3: How has the database grown over time?
+
+Counting by publication year, we can look at the number of contributions by decade (as a bar-graph) or in more details by year (a continuous line)
+
+```{r}
+source_freq %>%
+  group_by(year) %>%
+  summarise(source_count = n()) %>%
+  arrange(year) %>%
+  mutate(source_cumsum = cumsum(source_count)) -> 
+source_freq_year
+
+source_freq %>%
+  mutate(decade = 10*floor(year/10)) %>%
+  group_by(decade) %>%
+  summarise(source_count = n()) %>%
+  arrange(decade) %>%
+  mutate(source_cumsum = cumsum(source_count)) -> 
+source_freq_decade
+
+ggplot() +
+  geom_line(mapping = aes(x=year,   y = source_cumsum), data = source_freq_year, color = 'black', lwd = 1) +
+  geom_bar( mapping = aes(x=decade, y = source_cumsum), data = source_freq_decade, stat = 'identity', fill = 'blue', alpha = 0.5) +
+  ylab('Contributions') +
+  xlab('Year of publication') + 
+  ggtitle('Source accumulation over time')
+```
+
+## Metadata: Analysing culture notes
+
+The widest column in the database (text length ranging from 0 or NA to 1938 characters) is "Culture_Notes", containing descriptive textual information about each culture . 
+
+```{r}
+sapply(d$Culture_Notes, nchar) %>% summary()
+```
+
+As this is an academic text (and not a comment or a call transcript) I did not see a lot of value in diving into sentiment analysis, it was interesting to look at the frequency of words used in the notes. Since we are analysing an anthropological database focused on religion and culture, the result should not surprise anyone: 
+
+```{r, echo = FALSE, message = FALSE}
+
+require(wordcloud)
+
+data("stop_words")
+
+d %>% 
+  select(Culture, Culture_Notes) %>%
+  unnest_tokens(word, Culture_Notes, token = 'words') %>%
+  anti_join(stop_words) %>%
+  count(word, sort = TRUE) %>%
+  top_n(50) %>%
+  do(wordcloud(.$word, .$n, colors = blues9[5:9]), .) -> x
+```
+
+And now we can repeat the same geo-analysis we did before but with some metadata - how "verbose" were the writers of the notes over different geographic territories?
+
+```{r, message=FALSE, warning=FALSE}
+qmap(c(lon = 140, lat = -10), zoom = 3) +
+  geom_point(
+    data = d, 
+    aes(x = v6.Longitude, y = v5.Latitude), 
+    color = 'red',
+    show.legend = TRUE,
+    alpha = 0.3, 
+    size = 1 + 40 * nchar(d$Culture_Notes) / max(nchar(d$Culture_Notes), na.rm = TRUE)
+  ) +
+  geom_text(
+    data = d,
+    aes(x = v6.Longitude, y = v5.Latitude, label = Culture), 
+    check_overlap = FALSE,
+    size = 3 # + 7 * nchar(d$Culture_Notes) / max(nchar(d$Culture_Notes), na.rm = TRUE) 
+  )
+```
+
+# References

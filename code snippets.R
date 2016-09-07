@@ -7,20 +7,22 @@ require(tidytext)
 #require(stringr)
 
 # Graphics packages
-require(magick)
+#require(magick)
 require(ggplot2)
+#require(maps)
 require(ggmap)
-require(grid)
+#require(grid)
 #require(googleVis)
 
 
-# Load & filter data ------------------------------------------------------
+# Load & filter data Focusing only on the "pacific" cultures ------------------
 
-d <- read_tsv('c:/Users/yizhart/Downloads/Datasets/Pulotu_Database_4_7_2015.txt')
+read_tsv('c:/Users/yizhart/Downloads/Datasets/Pulotu_Database_4_7_2015.txt') %>%
+  filter(substring(Culture, 1, 8) != 'Malagasy') ->
+d
 
-# Focusing only on the "pacific" cultures, and adding some columns
+# Adding some columns
 d %>% 
-  filter(substring(d$Culture, 1, 8) != 'Malagasy') %>%
   mutate(
     Start = parse_date(paste(substring(v1.Traditional_Time_Focus, first = 1, last = 4), '-01-01', sep = ''), format = '%Y-%m-%d'),
     End   = parse_date(paste(substring(v1.Traditional_Time_Focus, first = 6), '-01-01', sep = ''), format = '%Y-%m-%d'),
@@ -36,7 +38,7 @@ d %>%
     geom_segment(aes(x=Start, xend=End, y=Culture, yend=Culture, color = Culture), size=1) + 
     labs(x = 'Years', y = 'Culture') +
     #theme_minimal() + 
-    theme(legend.position="none")
+    theme(legend.position="none", axis.text.y = element_text(size=4))
 
   
 # Graph2 : cultures on map, based on population size ----------------------
@@ -51,7 +53,7 @@ qmap(c(lon = 140, lat = -10), zoom = 3) +
     aes(x = v6.Longitude, y = v5.Latitude), 
     color = 'red',
     show.legend = TRUE,
-    alpha = 0.5, 
+    alpha = 0.3, 
     size = 5 + 30 * as.numeric(d$v10.Population)/ max(as.numeric(d$v10.Population), na.rm = TRUE)
   ) +
   geom_text(
@@ -167,5 +169,28 @@ d %>%
   anti_join(stop_words) %>%
   count(word, sort = TRUE) %>%
   top_n(50) %>%
-  do(wordcloud(.$word, .$n, colors = blues9[5:9]), .)
+  do(wordcloud(.$word, .$n, colors = blues9[5:9]), .) 
+
+
+# Comparative word clouds: 2 clouds split by categories.  --------
+# same words have same color to facilitate identification
+
+
+# Verbosity of text notes over geography ----------------------------------
+
+qmap(c(lon = 140, lat = -10), zoom = 3) +
+  geom_point(
+    data = d, 
+    aes(x = v6.Longitude, y = v5.Latitude), 
+    color = 'red',
+    show.legend = TRUE,
+    alpha = 0.3, 
+    size = 1 + 40 * nchar(d$Culture_Notes) / max(nchar(d$Culture_Notes), na.rm = TRUE)
+  ) +
+  geom_text(
+    data = d,
+    aes(x = v6.Longitude, y = v5.Latitude, label = Culture), 
+    check_overlap = FALSE,
+    size = 3 # + 7 * nchar(d$Culture_Notes) / max(nchar(d$Culture_Notes), na.rm = TRUE) 
+  )
 
