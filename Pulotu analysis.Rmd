@@ -74,8 +74,10 @@ One of my personal goals in writing this post is to analyse the data using the p
 So let's get started be loading all the packages we need and reading the data file:
 
 ```{r, echo = TRUE, message=FALSE}
-require(tidyverse)
-require(ggmap)
+library(tidyverse)
+library(ggmap)
+library(tidytext)
+library(wordcloud)
 
 # Load & filter data, focusing only on the "pacific" cultures-------------------
 read_tsv('https://ndownloader.figshare.com/files/2161625') %>%
@@ -261,9 +263,6 @@ sapply(d$Culture_Notes, nchar) %>% summary()
 As this is an academic text (and not a comment or a call transcript) I did not see a lot of value in diving into sentiment analysis, it was interesting to look at the frequency of words used in the notes. Since we are analysing an anthropological database focused on religion and culture, the result should not surprise anyone: 
 
 ```{r, echo = FALSE, message = FALSE}
-
-require(wordcloud)
-
 data("stop_words")
 
 d %>% 
