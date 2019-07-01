@@ -78,9 +78,8 @@ require(tidyverse)
 require(ggmap)
 
 # Load & filter data, focusing only on the "pacific" cultures-------------------
-read_tsv('c:/Users/yizhart/Downloads/Datasets/Pulotu_Database_4_7_2015.txt') %>%
-    filter(substring(Culture, 1, 8) != 'Malagasy') ->
-d
+read_tsv('https://ndownloader.figshare.com/files/2161625') %>%
+    filter(substring(Culture, 1, 8) != 'Malagasy') -> d
 ```
 
 ## Data visualizations
