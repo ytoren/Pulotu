@@ -74,15 +74,7 @@ One of my personal goals in writing this post is to analyse the data using the p
 So let's get started be loading all the packages we need and reading the data file:
 
 ```{r, echo = TRUE, message=FALSE}
-# Data manipulation packages
-require(dplyr)
-require(readr)
-require(tidyr)
-require(reshape2)
-require(tidytext)
-
-# Graphics packages
-require(ggplot2)
+require(tidyverse)
 require(ggmap)
 
 # Load & filter data, focusing only on the "pacific" cultures-------------------
