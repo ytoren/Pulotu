@@ -109,33 +109,41 @@ d %>%
 Another simple visualization is to take the longitude/latitude included in the files and use the to place some data on a map. As a first step let's try to find the "centre" of the map so we can make the appropriate request from the map service:
 
 ```{r, echo = TRUE}
-d %>% summarise(
-  lon_mean = mean(v6.Longitude), 
-  lat_mean = mean(v5.Latitude),
-  lon_med = median(v6.Longitude),
-  lat_med = median(v5.Latitude)
+d %>% select(v6.Longitude, v5.Latitude) %>% apply(MARGIN = 2, summary) -> coord_summary
+print(coord_summary)
+```
+
+The following code uses the ```ggmap``` package (@ggmap_cite) to download the required area. Unfortunately, since mid-2018, Google maps require some authentication to get maps, and therefore I opted for Stamen maps.
+
+```{r, message=FALSE}
+m <- get_stamenmap(
+  bbox = c(
+    left = coord_summary[1,1], 
+    bottom = coord_summary[1,2], 
+    right = coord_summary[6,1],
+    top = coord_summary[6,2]
+  ),
+  zoom = 5
 )
 ```
 
-I ended up choosing a coordinate manually (140, -10). The following code is not particularly "tidy" but works with the ```ggmap``` package (@ggmap_cite) to show the relative population of the culture on a Google map:
+The download function does not allow a "continuous" view of the Pacific, and therefore points are split between the two sides of the map: 
 
-```{r, echo = FALSE, warning=FALSE}
-qmap(c(lon = 140, lat = -10), zoom = 3) +
-  geom_point(
-    data = d, 
-    aes(x = v6.Longitude, y = v5.Latitude), 
-    color = 'red',
-    show.legend = TRUE,
-    alpha = 0.3, 
-    size = 5 + 30 * as.numeric(d$v10.Population)/ max(as.numeric(d$v10.Population), na.rm = TRUE)
-  ) +
-  geom_text(
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+ggmap(m) %>% 
+  +geom_point(
     data = d,
-    aes(x = v6.Longitude, y = v5.Latitude, label = Culture), 
+    aes(x = v6.Longitude, y = v5.Latitude, size = v10.Population),
+    color = 'pink',
+    show.legend = FALSE,
+    alpha = 0.3
+  ) %>% 
+  +geom_text(
+    data = d,
+    aes(x = v6.Longitude, y = v5.Latitude, label = Culture),
     check_overlap = FALSE,
-    size = 1 + 5 * as.numeric(d$v10.Population)/ max(as.numeric(d$v10.Population), na.rm = TRUE)
+    size = 1
   )
-
 ```
 
 
@@ -275,20 +283,19 @@ d %>%
 And now we can repeat the same geo-analysis we did before but with some metadata - how "verbose" were the writers of the notes over different geographic territories?
 
 ```{r, message=FALSE, warning=FALSE}
-qmap(c(lon = 140, lat = -10), zoom = 3) +
-  geom_point(
+ggmap(m) %>%
+  +geom_point(
     data = d, 
-    aes(x = v6.Longitude, y = v5.Latitude), 
-    color = 'red',
-    show.legend = TRUE,
-    alpha = 0.3, 
-    size = 1 + 40 * nchar(d$Culture_Notes) / max(nchar(d$Culture_Notes), na.rm = TRUE)
-  ) +
-  geom_text(
+    aes(x = v6.Longitude, y = v5.Latitude, size = nchar(d$Culture_Notes)), 
+    color = 'pink',
+    show.legend = FALSE,
+    alpha = 0.3  
+  ) %>% 
+  +geom_text(
     data = d,
     aes(x = v6.Longitude, y = v5.Latitude, label = Culture), 
     check_overlap = FALSE,
-    size = 3 # + 7 * nchar(d$Culture_Notes) / max(nchar(d$Culture_Notes), na.rm = TRUE) 
+    size = 1
   )
 ```
 
