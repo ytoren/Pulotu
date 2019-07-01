@@ -154,9 +154,9 @@ As you can see I rely heavily on "tidy" concepts and packages (```dplyr, tidyr, 
 year_pattern <- '[ ][(][0-9]{4}[A-Z]{0,1}[)][ ]'
 
 d %>% 
-  select(ends_with('Source'), Culture) %>%
+  select(ends_with('Source'), Culture) %>% 
   # transpose each column to a row
-  melt(id = ('Culture')) %>% 
+  gather(key = 'source', value = 'value', -Culture) %>% 
   # split multiple sources in a single line
   mutate(value = strsplit(value, split = '; ')) %>%
   # convert a multi-source line to multiple lines
@@ -173,7 +173,7 @@ d %>%
     after = substr(value, start+length, stop = nchar(value))
   ) %>%
   # everythin before the year is author name, and the match itself "year in brackets"
-  select(Culture, variable, Author = before, year = matched) %>%
+  select(Culture, value, Author = before, year = matched) %>%
   mutate(year = as.numeric(gsub('[^0-9]', '', year))) %>%
   # split multiple authors
   mutate(Author = strsplit(Author, split = ' & ')) %>%
