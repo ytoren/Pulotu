@@ -180,9 +180,7 @@ d %>%
   # convert a multi-Author line to multiple lines
   unnest(Author) %>%
   # filter author names that are all numbers (some errors occur)
-  filter(grepl('[a-zA-Z]', Author)) %>%
-  tbl_df() ->
-source_freq
+  filter(grepl('[a-zA-Z]', Author)) -> source_freq
 
 head(source_freq)
 ```
