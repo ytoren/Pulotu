@@ -73,7 +73,7 @@ One of my personal goals in writing this post is to analyse the data using the p
 
 So let's get started be loading all the packages we need and reading the data file:
 
-```{r, echo = TRUE, message=FALSE}
+```{r, echo=TRUE, message=FALSE}
 library(tidyverse)
 library(ggmap)
 library(tidytext)
@@ -81,7 +81,18 @@ library(wordcloud)
 
 # Load & filter data, focusing only on the "pacific" cultures-------------------
 read_tsv('https://ndownloader.figshare.com/files/2161625') %>%
-    filter(substring(Culture, 1, 8) != 'Malagasy') -> d
+  filter(substring(Culture, 1, 8) != 'Malagasy') %>% 
+  mutate(
+    Start = parse_date(
+      paste(substring(v1.Traditional_Time_Focus, first = 1, last = 4), '-01-01', sep = ''), 
+      format = '%Y-%m-%d'
+    ),
+    End = parse_date(
+      paste(substring(v1.Traditional_Time_Focus, first = 6), '-01-01', sep = ''), 
+      format = '%Y-%m-%d'
+    ),
+    n = row_number()
+  ) -> d
 ```
 
 ## Data visualizations
@@ -89,16 +100,6 @@ read_tsv('https://ndownloader.figshare.com/files/2161625') %>%
 Let's start with a simple example: the variable marked as "v1.Traditional\_Time\_Focus" contains a range of years (1XXX - 1XXX) to which observations about a culture are applicable. Since the structure is uniform it's easy to extract the beginning and the end of the period and visualize the data
 
 ``` {r, echo = TRUE, out.width = '1024px', dpi=200}
-# adding some columns
-d %>% 
-  mutate(
-    Start = parse_date(paste(substring(v1.Traditional_Time_Focus, first = 1, last = 4), '-01-01', sep = ''), format = '%Y-%m-%d'),
-    End   = parse_date(paste(substring(v1.Traditional_Time_Focus, first = 6), '-01-01', sep = ''), format = '%Y-%m-%d'),
-    n = row_number()
-  ) ->
-d
-
-# Graph1 : time period overlap --------------------------------------------
 d %>% 
   ggplot() + 
     geom_segment(aes(x=Start, xend=End, y=Culture, yend=Culture, color = Culture), size=1) + 
