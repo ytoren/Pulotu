@@ -71,14 +71,19 @@ A full data dictionary can be found [here](https://pulotu.shh.mpg.de/glossary).
 
 One of my personal goals in writing this post is to analyse the data using the principles of [Tidy Data](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html). I wrote my first piece of R-code a while ago (2005) and have been coding mostly in base R, SQL for data manipulations (via ```sqldf```) and the basic ```plot``` function. Adjusting to the new coding paradigm (```dplyr``` semantics, ```magrittr``` pipes, etc.) and the "graphic grammar" of ```ggplot2``` has been quite a challenge but a real "eye opener" to new ways of thinking about data, analysis and code. For new-comers into this brave new world I highly recommend starting with this [post](http://kbroman.org/hipsteR/) by Karl Broman.
 
-So let's get started be loading all the packages we need and reading the data file:
+So let's get started be loading all the packages we need 
 
 ```{r, echo=TRUE, message=FALSE}
 library(tidyverse)
 library(ggmap)
 library(tidytext)
 library(wordcloud)
+options(repr.plot.width=15, repr.plot.height = 7)
+```
 
+Next we load the data and parse some date columns: 
+
+```{r, echo=TRUE, message=FALSE}
 # Load & filter data, focusing only on the "pacific" cultures-------------------
 read_tsv('https://ndownloader.figshare.com/files/2161625') %>%
   filter(substring(Culture, 1, 8) != 'Malagasy') %>% 
