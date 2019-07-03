@@ -128,7 +128,7 @@ m <- get_stamenmap(
     right = coord_summary[6,1],
     top = coord_summary[6,2]
   ),
-  zoom = 5
+  zoom = 3
 )
 ```
 
