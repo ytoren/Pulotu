@@ -78,7 +78,6 @@ library(tidyverse)
 library(ggmap)
 library(tidytext)
 library(wordcloud)
-options(repr.plot.width=15, repr.plot.height = 7)
 ```
 
 Next we load the data and parse some date columns: 
@@ -104,7 +103,7 @@ read_tsv('https://ndownloader.figshare.com/files/2161625') %>%
 
 Let's start with a simple example: the variable marked as "v1.Traditional\_Time\_Focus" contains a range of years (1XXX - 1XXX) to which observations about a culture are applicable. Since the structure is uniform it's easy to extract the beginning and the end of the period and visualize the data
 
-``` {r, echo = TRUE, out.width = '1024px', dpi=200}
+``` {r, echo = TRUE, out.width = '100%', dpi=144}
 d %>% 
   ggplot() + 
     geom_segment(aes(x=Start, xend=End, y=Culture, yend=Culture, color = Culture), size=1) + 
@@ -135,7 +134,7 @@ m <- get_stamenmap(
 
 The download function does not allow a "continuous" view of the Pacific, and therefore points are split between the two sides of the map: 
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE}
+```{r, echo = FALSE, warning = FALSE, message = FALSE, out.width = '100%', dpi=144}
 ggmap(m) %>% 
   +geom_point(
     data = d,
@@ -206,7 +205,7 @@ Now that we have the data in a tidy format, let's visualize it!
 
 ### Example 1: Who are the top 50 contributors to the database?
 
-```{r, echo = FALSE, warning=FALSE, message=FALSE}
+```{r, echo = FALSE, warning=FALSE, message=FALSE, out.width = '100%', dpi=144}
 source_freq %>%
   count(Author, sort = TRUE) %>%
   top_n(50) %>%
@@ -222,7 +221,7 @@ source_freq %>%
 
 As you can see some authors contribute multiple papers to a single culture, while others contribute a single paper for multiple culture (and are therefore counted 20 times)
 
-```{r, echo = FALSE, warning=FALSE, message=FALSE}
+```{r, echo = FALSE, warning=FALSE, message=FALSE, out.width = '100%', dpi=144}
 source_freq %>%
   count(Culture, Author) %>%
   semi_join({source_freq %>% count(Author, sort = TRUE) %>% top_n(20)}, c('Author' = 'Author')) %>%
@@ -240,7 +239,7 @@ Ignoring the special cases ([Google maps](http://maps.google.com), [DaftLogic](h
 
 Counting by publication year, we can look at the number of contributions by decade (as a bar-graph) or in more details by year (a continuous line)
 
-```{r}
+```{r, out.width = '100%', dpi=144}
 source_freq %>%
   group_by(year) %>%
   summarise(source_count = n()) %>%
@@ -274,7 +273,7 @@ sapply(d$Culture_Notes, nchar) %>% summary()
 
 As this is an academic text (and not a comment or a call transcript) I did not see a lot of value in diving into sentiment analysis, it was interesting to look at the frequency of words used in the notes. Since we are analysing an anthropological database focused on religion and culture, the result should not surprise anyone: 
 
-```{r, echo = FALSE, message = FALSE}
+```{r, echo = FALSE, message = FALSE, out.width = '100%', dpi=144}
 data("stop_words")
 
 d %>% 
@@ -288,7 +287,7 @@ d %>%
 
 And now we can repeat the same geo-analysis we did before but with some metadata - how "verbose" were the writers of the notes over different geographic territories?
 
-```{r, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE, out.width = '100%', dpi=144}
 ggmap(m) %>%
   +geom_point(
     data = d, 
