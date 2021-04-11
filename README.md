@@ -1,2 +1,4 @@
+[Back to my projects page](/)
 # Pulotu
-Analysis of data from the Pulotu project (https://pulotu.econ.mpg.de/)
+
+[Analysis](ulotu_analysis.html) of data from the [Pulotu project](https://pulotu.econ.mpg.de/)
